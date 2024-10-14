@@ -35,7 +35,7 @@ function addObject(object: Planet | Star): Planet | Star {
 function initialiseGame(app: Application) {
   const ship = app.stage.addChild(new Ship(10, 20));
   ship.x = window.innerWidth / 2;
-  ship.y = window.innerHeight / 2;
+  ship.y = window.innerHeight * 0.75;
   let shipVelocity = new Point(0, 0);
   const objects: Array<Planet | Star> = [];
   const topLine = app.stage.addChild(drawLine(MAX_POS * 2, 0));
@@ -46,6 +46,11 @@ function initialiseGame(app: Application) {
   bottomLine.position.set(-MAX_POS, MAX_POS);
   leftLine.position.set(-MAX_POS, -MAX_POS);
   rightLine.position.set(MAX_POS, -MAX_POS);
+
+  let isPointerDown = false;
+  let isTouch = false;
+  let eventX = 0;
+  let eventY = 0;
 
   for (let i = 0; i < 1000; i++) {
     const planetRadius = Math.ceil(Math.random() * 100);
@@ -60,14 +65,69 @@ function initialiseGame(app: Application) {
 
   window.onresize = () => {
     const shiftX = ship.x - window.innerWidth / 2;
-    const shiftY = ship.y - window.innerHeight / 2;
+    const shiftY = ship.y - window.innerHeight * 0.75;
     ship.x = window.innerWidth / 2;
-    ship.y = window.innerHeight / 2;
+    ship.y = window.innerHeight * 0.75;
 
     [...objects, topLine, bottomLine, leftLine, rightLine].forEach(object => {
       object.x -= shiftX;
       object.y -= shiftY;
     });
+  };
+
+  window.ontouchstart = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    eventX = event.touches[0].clientX;
+    eventY = event.touches[0].clientY;
+    isTouch = true;
+
+  };
+
+  window.ontouchmove = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    eventX = event.touches[0].clientX;
+    eventY = event.touches[0].clientY;
+  };
+
+  window.ontouchend = () => {
+    isTouch = false;
+  };
+
+  window.ontouchcancel = () => {
+    isTouch = false;
+  };
+
+  window.onpointerup = () => {
+    isPointerDown = false;
+  };
+
+  window.onpointerout = () => {
+    isPointerDown = false;
+  };
+
+  window.onpointerleave = () => {
+    isPointerDown = false;
+  };
+
+  window.onpointercancel = () => {
+    isPointerDown = false;
+  };
+
+  window.onpointerdown = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    eventX = event.clientX;
+    eventY = event.clientY;
+    isPointerDown = true;
+  };
+
+  window.onpointermove = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    eventX = event.clientX;
+    eventY = event.clientY;
   };
 
   window.onkeydown = (event) => {
@@ -95,6 +155,25 @@ function initialiseGame(app: Application) {
   }
 
   app.ticker.add(() => {
+    if (isPointerDown || isTouch) {
+      if (eventY < ship.y - ship.height / 2) {
+        if (topLine.y + shipVelocity.y < ship.y)
+          shipVelocity.y += 0.25;
+      }
+      else if (eventY > ship.y + ship.height / 2) {
+        if (bottomLine.y + shipVelocity.y > ship.y)
+          shipVelocity.y -= 0.25;
+      }
+
+      if (eventX < ship.x - ship.width / 2) {
+        if (leftLine.x + shipVelocity.x < ship.x)
+          shipVelocity.x += 0.25;
+      } else if (eventX > ship.x + ship.width / 2) {
+        if (rightLine.x + shipVelocity.x > ship.x)
+          shipVelocity.x -= 0.25;
+      }
+    }
+
     if (leftLine.x + shipVelocity.x >= ship.x - ship.width / 2) {
       const distanceToEdge = (ship.x - ship.width / 2) - leftLine.x;
       shipVelocity.x = distanceToEdge;
