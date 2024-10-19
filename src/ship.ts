@@ -5,6 +5,6 @@ export class Ship extends Container {
     super();
     const sprite = this.addChild(Sprite.from('spaceShips_001.png'));
     sprite.anchor.set(0.5);
-    sprite.scale.set(0.3, -0.3);
+    sprite.scale.set(0.2, -0.2);
   }
 }

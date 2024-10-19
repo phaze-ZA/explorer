@@ -243,37 +243,20 @@ function initialiseGame(app: Application) {
       }
 
       if (isBrakePressed) {
-        if (shipVelocity.x > 0) {
-          if (shipVelocity.x - 0.25 < 0) {
-            shipVelocity.x -= shipVelocity.x;
-          }
-          else {
-            shipVelocity.x -= 0.25;
-          }
+        const velocityAngle = Math.atan2(shipVelocity.x, shipVelocity.y);
+        const xVelocity = getXVelocity(velocityAngle);
+        const yVelocity = getYVelocity(velocityAngle);
+        if (Math.abs(shipVelocity.x) - Math.abs(xVelocity) < 0) {
+          shipVelocity.x = 0;
         }
-        if (shipVelocity.x < 0) {
-          if (shipVelocity.x + 0.25 > 0) {
-            shipVelocity.x += shipVelocity.x;
-          }
-          else {
-            shipVelocity.x += 0.25;
-          }
+        if (Math.abs(shipVelocity.y) - Math.abs(yVelocity) < 0) {
+          shipVelocity.y = 0;
         }
-        if (shipVelocity.y > 0) {
-          if (shipVelocity.y - 0.25 < 0) {
-            shipVelocity.y -= shipVelocity.y;
-          }
-          else {
-            shipVelocity.y -= 0.25;
-          }
+        if (shipVelocity.x != 0) {
+          shipVelocity.x += xVelocity;
         }
-        if (shipVelocity.y < 0) {
-          if (shipVelocity.y + 0.25 > 0) {
-            shipVelocity.y += shipVelocity.y;
-          }
-          else {
-            shipVelocity.y += 0.25;
-          }
+        if (shipVelocity.y != 0) {
+          shipVelocity.y -= yVelocity;
         }
       }
     }
