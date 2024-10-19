@@ -1,10 +1,11 @@
-import { Application, Container, Graphics, Point, Rectangle } from "pixi.js";
+import { Application, Assets, Container, Graphics, Point } from "pixi.js";
 import { Ship } from "./ship";
 import { Planet } from "./planet";
 import { Star } from "./star";
 import { GUI } from "dat.gui";
 
 const MAX_POS = 10000;
+const MAX_SPEED = 0.25;
 
 async function bootstrap() {
   const app = new Application();
@@ -18,24 +19,69 @@ async function bootstrap() {
 
   document.body.appendChild(app.canvas);
   app.canvas.setAttribute('style', 'display: block;');
+  await Assets.load('spaceShips_001.png');
   initialiseGame(app);
 }
 
-function addObject(object: Planet | Star): Planet | Star {
-  const maxMinusRadius = MAX_POS - object.radius;
+function addObject(object: Planet | Star, maxDistance: number = MAX_POS): Planet | Star {
+  const maxMinusRadius = maxDistance - object.radius;
   const x = object.radius + Math.floor(Math.random() * (maxMinusRadius * 2));
   const y = object.radius + Math.floor(Math.random() * (maxMinusRadius * 2));
   object.position.set(x, y);
   return object;
 }
 
+// basically we know if ship is facing up (i.e angle < Math.PI / 2 || angle > 1.5 * Math.PI) then y=1
+// otherwise y=-1
+function getXVelocity(currentAngle: number): number {
+  const cosVal = Math.sin(currentAngle);
+  const magnitude = MAX_SPEED * cosVal;
+
+  if (Math.abs(magnitude) > MAX_SPEED) {
+    throw new Error(`What the fuck happened here?
+Magnitude:    ${magnitude}
+currentAngle: ${currentAngle}
+cosVal:       ${cosVal}
+yComp:        ${MAX_SPEED}`);
+  }
+  return -magnitude;
+}
+
+function getYVelocity(currentAngle: number): number {
+  const sinVal = Math.cos(currentAngle);
+  const magnitude = MAX_SPEED * sinVal;
+
+  if (Math.abs(magnitude) > MAX_SPEED) {
+    throw new Error(`What the fuck happened here?
+Magnitude:    ${magnitude}
+currentAngle: ${currentAngle}
+sinVal:       ${sinVal}
+xComp:        ${MAX_SPEED}`);
+  }
+
+  return magnitude;
+}
+
 function initialiseGame(app: Application) {
-  const bg = new Container();
+  const bg = app.stage.addChild(new Container());
   bg.position.set(-MAX_POS, -MAX_POS);
   bg.width = MAX_POS * 2;
   bg.height = MAX_POS * 2;
-  app.stage.addChild(bg);
-  const ship = app.stage.addChild(new Ship(10, 20));
+  bg.enableRenderGroup();
+
+  const nearStarsBg = app.stage.addChild(new Container());
+  nearStarsBg.position.set(-MAX_POS * 1.5, -MAX_POS * 1.5);
+  nearStarsBg.width = MAX_POS * 2.5;
+  nearStarsBg.height = MAX_POS * 2.5;
+  nearStarsBg.enableRenderGroup();
+
+  const planetBg = app.stage.addChild(new Container());
+  planetBg.position.set(-MAX_POS * 2, -MAX_POS * 2);
+  planetBg.width = MAX_POS * 3;
+  planetBg.height = MAX_POS * 3;
+  planetBg.enableRenderGroup();
+
+  const ship = app.stage.addChild(new Ship());
   ship.x = window.innerWidth / 2;
   ship.y = window.innerHeight * 0.75;
   let shipVelocity = new Point(0, 0);
@@ -45,19 +91,14 @@ function initialiseGame(app: Application) {
   universeFolder.add({ numObjects: 1000 }, 'numObjects', 100, 50000).onFinishChange((value) => {
     setObjects(value);
   }).name('No. Objects');
-  const renderFolder = gui.addFolder('Rendering');
-  renderFolder.add({ enableRenderGroup: () => bg.enableRenderGroup() }, 'enableRenderGroup').name('Enable BG Render Group');
-
-  renderFolder.add({ disableRenderGroup: () => bg.disableRenderGroup() }, 'disableRenderGroup').name('Disable BG Render Group');
-
-  renderFolder.add({ enableRenderGroup: () => app.stage.enableRenderGroup() }, 'enableRenderGroup').name('Enable Window Render Group');
-
-  renderFolder.add({ disableRenderGroup: () => app.stage.disableRenderGroup() }, 'disableRenderGroup').name('Disable Window Render Group');
-
-  const objects: Array<Container> = [];
 
   let isPointerDown = false;
   let isTouch = false;
+  let isWKeyDown = false;
+  let isSKeyDown = false;
+  let isAKeyDown = false;
+  let isDKeyDown = false;
+  let isBrakePressed = false;
   let eventX = 0;
   let eventY = 0;
 
@@ -65,44 +106,20 @@ function initialiseGame(app: Application) {
     bg.removeChildren();
     bg.addChild(new Graphics().rect(0, 0, MAX_POS * 2, MAX_POS * 2).stroke({ color: 0x660000 }));
     for (let i = 0; i < numObjects; i++) {
-      const planetRadius = Math.ceil(Math.random() * 100);
-      const starRadius = Math.ceil(Math.random() * 30);
+      const planetRadius = Math.ceil(Math.random() * 100) + 10;
+      const starRadius = Math.ceil(Math.random() * 10);
       const starPoints = Math.ceil(Math.random() * 5) + 4;
+      const nearStarRadius = Math.ceil(Math.random() * 20) + 10;
       const planet = new Planet(planetRadius);
       const star = new Star(starRadius, starPoints);
-      bg.addChild(addObject(planet)).alpha = 0.5;
+      const nearStar = new Star(nearStarRadius, starPoints);
+      planetBg.addChild(addObject(planet, MAX_POS * 1.5));
+      nearStarsBg.addChild(addObject(nearStar, MAX_POS * 1.25));
       bg.addChild(addObject(star));
     }
   }
 
   setObjects(1000);
-
-  const cullFolder = gui.addFolder("Culling");
-  const bgCull = cullFolder.addFolder("Background");
-  const windowCull = cullFolder.addFolder("Window");
-  windowCull.add({ canCull: false }, "canCull").onChange((value) => app.stage.cullable = value).name('Cull Background');
-  windowCull.add({ enabled: true }, "enabled").onChange((value) => app.stage.cullableChildren = value).name('Cullable Children');
-  windowCull.add({ enabled: false }, 'enabled').onChange((value) => {
-    if (value) {
-      app.stage.cullArea = new Rectangle(0, 0, window.innerWidth, window.innerHeight);
-    }
-    else {
-      app.stage.cullArea = undefined;
-    }
-  }).name('Cull To Window');
-
-  bgCull.add({ canCull: false }, "canCull").onChange((value) => bg.cullable = value).name('Cull Background');
-  bgCull.add({ enabled: true }, "enabled").onChange((value) => bg.cullableChildren = value).name('Cullable Children');
-  bgCull.add({ enabled: false }, 'enabled').onChange((value) => {
-    if (value) {
-      bg.cullArea = new Rectangle(0, 0, window.innerWidth, window.innerHeight);
-    }
-    else {
-      bg.cullArea = undefined;
-    }
-  }).name('Cull To Window');
-
-  objects.push(bg);
 
   window.onresize = () => {
     const shiftX = ship.x - window.innerWidth / 2;
@@ -111,6 +128,8 @@ function initialiseGame(app: Application) {
     ship.y = window.innerHeight * 0.75;
     bg.x -= shiftX;
     bg.y -= shiftY;
+    planetBg.x -= shiftX;
+    planetBg.y -= shiftY;
   };
 
   app.canvas.ontouchstart = (event) => {
@@ -119,7 +138,6 @@ function initialiseGame(app: Application) {
     eventX = event.touches[0].clientX;
     eventY = event.touches[0].clientY;
     isTouch = true;
-
   };
 
   app.canvas.ontouchmove = (event) => {
@@ -156,29 +174,45 @@ function initialiseGame(app: Application) {
     eventY = event.clientY;
   };
 
-  // app.canvas.onkeydown = (event) => {
-  //   switch (event.key) {
-  //     case 'w':
-  //       if (topLine.y + shipVelocity.y < ship.y)
-  //         shipVelocity.y += 1;
-  //       break;
-  //     case 's':
-  //       if (bottomLine.y + shipVelocity.y > ship.y)
-  //         shipVelocity.y -= 1;
-  //       break;
-  //     case 'a':
-  //       if (leftLine.x + shipVelocity.x < ship.x)
-  //         shipVelocity.x += 1;
-  //       break;
-  //     case 'd':
-  //       if (rightLine.x + shipVelocity.x > ship.x)
-  //         shipVelocity.x -= 1;
-  //       break;
-  //     case ' ':
-  //       shipVelocity.set(0);
-  //       break;
-  //   }
-  // }
+  window.onkeydown = (event) => {
+    switch (event.key) {
+      case 'w':
+        isWKeyDown = true;
+        break;
+      case 's':
+        isSKeyDown = true;
+        break;
+      case 'a':
+        isAKeyDown = true;
+        break;
+      case 'd':
+        isDKeyDown = true;
+        break;
+      case ' ':
+        isBrakePressed = true;
+        break;
+    }
+  }
+
+  window.onkeyup = (event) => {
+    switch (event.key) {
+      case 'w':
+        isWKeyDown = false;
+        break;
+      case 'a':
+        isAKeyDown = false;
+        break;
+      case 's':
+        isSKeyDown = false;
+        break;
+      case 'd':
+        isDKeyDown = false;
+        break;
+      case ' ':
+        isBrakePressed = false;
+        break;
+    }
+  }
 
   app.ticker.maxFPS = 60;
   app.ticker.add(() => {
@@ -188,21 +222,59 @@ function initialiseGame(app: Application) {
     const rightEdge = bg.x + bg.width;
 
     if (isPointerDown || isTouch) {
-      if (eventY < ship.y - ship.height / 2) {
-        if (topEdge + shipVelocity.y < ship.y)
-          shipVelocity.y += 0.25;
+      ship.rotation = Math.atan2(eventX - ship.x, -(eventY - ship.y));
+      shipVelocity.y += getYVelocity(ship.rotation);
+      shipVelocity.x += getXVelocity(ship.rotation);
+    } else {
+      if (isWKeyDown) {
+        shipVelocity.y += getYVelocity(ship.rotation);
+        shipVelocity.x += getXVelocity(ship.rotation);
       }
-      else if (eventY > ship.y + ship.height / 2) {
-        if (bottomEdge + shipVelocity.y > ship.y)
-          shipVelocity.y -= 0.25;
+      if (isSKeyDown) {
+        shipVelocity.y -= getYVelocity(ship.rotation);
+        shipVelocity.x -= getXVelocity(ship.rotation);
       }
 
-      if (eventX < ship.x - ship.width / 2) {
-        if (leftEdge + shipVelocity.x < ship.x)
-          shipVelocity.x += 0.25;
-      } else if (eventX > ship.x + ship.width / 2) {
-        if (rightEdge + shipVelocity.x > ship.x)
-          shipVelocity.x -= 0.25;
+      if (isAKeyDown) {
+        ship.rotation -= 0.1;
+      }
+      if (isDKeyDown) {
+        ship.rotation += 0.1;
+      }
+
+      if (isBrakePressed) {
+        if (shipVelocity.x > 0) {
+          if (shipVelocity.x - 0.25 < 0) {
+            shipVelocity.x -= shipVelocity.x;
+          }
+          else {
+            shipVelocity.x -= 0.25;
+          }
+        }
+        if (shipVelocity.x < 0) {
+          if (shipVelocity.x + 0.25 > 0) {
+            shipVelocity.x += shipVelocity.x;
+          }
+          else {
+            shipVelocity.x += 0.25;
+          }
+        }
+        if (shipVelocity.y > 0) {
+          if (shipVelocity.y - 0.25 < 0) {
+            shipVelocity.y -= shipVelocity.y;
+          }
+          else {
+            shipVelocity.y -= 0.25;
+          }
+        }
+        if (shipVelocity.y < 0) {
+          if (shipVelocity.y + 0.25 > 0) {
+            shipVelocity.y += shipVelocity.y;
+          }
+          else {
+            shipVelocity.y += 0.25;
+          }
+        }
       }
     }
 
@@ -226,8 +298,12 @@ function initialiseGame(app: Application) {
       shipVelocity.y = distanceToEdge;
     }
 
-    bg.x += shipVelocity.x;
-    bg.y += shipVelocity.y;
+    bg.x += shipVelocity.x * 0.5;
+    bg.y += shipVelocity.y * 0.5;
+    nearStarsBg.x += shipVelocity.x * 0.75;
+    nearStarsBg.y += shipVelocity.y * 0.75;
+    planetBg.x += shipVelocity.x;
+    planetBg.y += shipVelocity.y;
   });
 }
 

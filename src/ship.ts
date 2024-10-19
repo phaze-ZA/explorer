@@ -1,12 +1,10 @@
-import { Container, Graphics } from "pixi.js";
+import { Container, Sprite } from "pixi.js";
 
 export class Ship extends Container {
-
-  constructor(
-    width: number,
-    height: number
-  ) {
+  constructor() {
     super();
-    this.addChild(new Graphics().rect(0, 0, width, height).fill({ color: 0xffffff })).pivot.set(width / 2, height / 2);
+    const sprite = this.addChild(Sprite.from('spaceShips_001.png'));
+    sprite.anchor.set(0.5);
+    sprite.scale.set(0.3, -0.3);
   }
 }
