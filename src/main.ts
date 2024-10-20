@@ -4,8 +4,16 @@ import { Planet } from "./planet";
 import { Star } from "./star";
 import { GUI } from "dat.gui";
 
-const MAX_POS = 10000;
+const MAX_POS = 80000;
 const MAX_SPEED = 0.25;
+const VANISHING_POINT = 10;
+const BG_LAYER_DISTANCE = 9;
+const MID_LAYER_DISTANCE = 6;
+
+function calculateParallax(x: number, distance: number, vanishingPoint: number): number {
+  const angle = Math.atan2(x, vanishingPoint);
+  return (vanishingPoint - distance) * Math.tan(angle);
+}
 
 async function bootstrap() {
   const app = new Application();
@@ -31,8 +39,6 @@ function addObject(object: Planet | Star, maxDistance: number = MAX_POS): Planet
   return object;
 }
 
-// basically we know if ship is facing up (i.e angle < Math.PI / 2 || angle > 1.5 * Math.PI) then y=1
-// otherwise y=-1
 function getXVelocity(currentAngle: number): number {
   const cosVal = Math.sin(currentAngle);
   const magnitude = MAX_SPEED * cosVal;
@@ -63,27 +69,27 @@ xComp:        ${MAX_SPEED}`);
 }
 
 function initialiseGame(app: Application) {
-  const bg = app.stage.addChild(new Container());
-  bg.position.set(-MAX_POS, -MAX_POS);
-  bg.width = MAX_POS * 2;
-  bg.height = MAX_POS * 2;
-  bg.enableRenderGroup();
+  const mapSize = MAX_POS * 2;
+  const bgLayerSize = calculateParallax(mapSize, BG_LAYER_DISTANCE, VANISHING_POINT);
+  const midLayerSize = calculateParallax(mapSize, MID_LAYER_DISTANCE, VANISHING_POINT);
 
-  const nearStarsBg = app.stage.addChild(new Container());
-  nearStarsBg.position.set(-MAX_POS * 1.5, -MAX_POS * 1.5);
-  nearStarsBg.width = MAX_POS * 2.5;
-  nearStarsBg.height = MAX_POS * 2.5;
-  nearStarsBg.enableRenderGroup();
-
-  const planetBg = app.stage.addChild(new Container());
-  planetBg.position.set(-MAX_POS * 2, -MAX_POS * 2);
-  planetBg.width = MAX_POS * 3;
-  planetBg.height = MAX_POS * 3;
-  planetBg.enableRenderGroup();
+  const bgLayer = app.stage.addChild(new Container());
+  const midLayer = app.stage.addChild(new Container());
+  const cameraLayer = app.stage.addChild(new Container());
 
   const ship = app.stage.addChild(new Ship());
   ship.x = window.innerWidth / 2;
   ship.y = window.innerHeight * 0.75;
+
+  bgLayer.position.set(ship.x - bgLayerSize / 2, ship.y - bgLayerSize / 2);
+  bgLayer.enableRenderGroup();
+
+  midLayer.enableRenderGroup();
+  midLayer.position.set(ship.x - midLayerSize / 2, ship.y - midLayerSize / 2);
+
+  cameraLayer.enableRenderGroup();
+  cameraLayer.position.set(ship.x - mapSize / 2, ship.y - mapSize / 2);
+
   let shipVelocity = new Point(0, 0);
 
   const gui = new GUI();
@@ -104,19 +110,28 @@ function initialiseGame(app: Application) {
   let eventY = 0;
 
   const setObjects = function(numObjects: number) {
-    bg.removeChildren();
-    bg.addChild(new Graphics().rect(0, 0, MAX_POS * 2, MAX_POS * 2).stroke({ color: 0x660000 }));
+    bgLayer.removeChildren();
+    bgLayer.addChild(new Graphics().rect(0, 0, bgLayerSize, bgLayerSize).stroke({ color: 0x660000 }));
+
+    midLayer.removeChildren();
+    midLayer.addChild(new Graphics().rect(0, 0, midLayerSize, midLayerSize).stroke({ color: 0x006600 }));
+
+    cameraLayer.removeChildren();
+    cameraLayer.addChild(new Graphics().rect(0, 0, mapSize, mapSize).stroke({ color: 0x000066 }));
+
     for (let i = 0; i < numObjects; i++) {
       const planetRadius = Math.ceil(Math.random() * 100) + 10;
       const starRadius = Math.ceil(Math.random() * 10);
       const starPoints = Math.ceil(Math.random() * 5) + 4;
       const nearStarRadius = Math.ceil(Math.random() * 20) + 10;
+
       const planet = new Planet(planetRadius);
       const star = new Star(starRadius, starPoints);
       const nearStar = new Star(nearStarRadius, starPoints);
-      planetBg.addChild(addObject(planet, MAX_POS * 1.5));
-      nearStarsBg.addChild(addObject(nearStar, MAX_POS * 1.25));
-      bg.addChild(addObject(star));
+
+      bgLayer.addChild(addObject(star, bgLayerSize / 2));
+      midLayer.addChild(addObject(nearStar, midLayerSize / 2));
+      cameraLayer.addChild(addObject(planet, mapSize / 2));
     }
   }
 
@@ -127,10 +142,12 @@ function initialiseGame(app: Application) {
     const shiftY = ship.y - window.innerHeight * 0.75;
     ship.x = window.innerWidth / 2;
     ship.y = window.innerHeight * 0.75;
-    bg.x -= shiftX;
-    bg.y -= shiftY;
-    planetBg.x -= shiftX;
-    planetBg.y -= shiftY;
+    cameraLayer.x -= shiftX;
+    cameraLayer.y -= shiftY;
+    midLayer.x -= shiftX;
+    midLayer.y -= shiftY;
+    bgLayer.x -= shiftX;
+    bgLayer.y -= shiftY;
   };
 
   app.canvas.ontouchstart = (event) => {
@@ -231,10 +248,10 @@ function initialiseGame(app: Application) {
 
   app.ticker.maxFPS = 60;
   app.ticker.add(() => {
-    const topEdge = bg.y;
-    const bottomEdge = bg.y + bg.height;
-    const leftEdge = bg.x;
-    const rightEdge = bg.x + bg.width;
+    const topEdge = cameraLayer.y;
+    const bottomEdge = cameraLayer.y + cameraLayer.height;
+    const leftEdge = cameraLayer.x;
+    const rightEdge = cameraLayer.x + cameraLayer.width;
 
     if (isPointerDown || isTouch) {
       ship.rotation = Math.atan2(eventX - ship.x, -(eventY - ship.y));
@@ -300,12 +317,12 @@ function initialiseGame(app: Application) {
       shipVelocity.y = distanceToEdge;
     }
 
-    bg.x += shipVelocity.x * 0.5;
-    bg.y += shipVelocity.y * 0.5;
-    nearStarsBg.x += shipVelocity.x * 0.75;
-    nearStarsBg.y += shipVelocity.y * 0.75;
-    planetBg.x += shipVelocity.x;
-    planetBg.y += shipVelocity.y;
+    bgLayer.x += calculateParallax(shipVelocity.x, BG_LAYER_DISTANCE, VANISHING_POINT);
+    bgLayer.y += calculateParallax(shipVelocity.y, BG_LAYER_DISTANCE, VANISHING_POINT);
+    midLayer.x += calculateParallax(shipVelocity.x, MID_LAYER_DISTANCE, VANISHING_POINT);
+    midLayer.y += calculateParallax(shipVelocity.y, MID_LAYER_DISTANCE, VANISHING_POINT);
+    cameraLayer.x += shipVelocity.x;
+    cameraLayer.y += shipVelocity.y;
   });
 }
 
