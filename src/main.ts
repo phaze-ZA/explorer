@@ -99,6 +99,7 @@ function initialiseGame(app: Application) {
   let isAKeyDown = false;
   let isDKeyDown = false;
   let isBrakePressed = false;
+  let isBoostPressed = false;
   let eventX = 0;
   let eventY = 0;
 
@@ -176,17 +177,24 @@ function initialiseGame(app: Application) {
 
   window.onkeydown = (event) => {
     switch (event.key) {
+      case 'W':
       case 'w':
         isWKeyDown = true;
         break;
+      case 'S':
       case 's':
         isSKeyDown = true;
         break;
+      case 'A':
       case 'a':
         isAKeyDown = true;
         break;
+      case 'D':
       case 'd':
         isDKeyDown = true;
+        break;
+      case 'Shift':
+        isBoostPressed = true;
         break;
       case ' ':
         isBrakePressed = true;
@@ -196,17 +204,24 @@ function initialiseGame(app: Application) {
 
   window.onkeyup = (event) => {
     switch (event.key) {
+      case 'W':
       case 'w':
         isWKeyDown = false;
         break;
+      case 'A':
       case 'a':
         isAKeyDown = false;
         break;
+      case 'S':
       case 's':
         isSKeyDown = false;
         break;
+      case 'D':
       case 'd':
         isDKeyDown = false;
+        break;
+      case 'Shift':
+        isBoostPressed = false;
         break;
       case ' ':
         isBrakePressed = false;
@@ -227,12 +242,16 @@ function initialiseGame(app: Application) {
       shipVelocity.x += getXVelocity(ship.rotation);
     } else {
       if (isWKeyDown) {
-        shipVelocity.y += getYVelocity(ship.rotation);
-        shipVelocity.x += getXVelocity(ship.rotation);
+        const speedFactor = isBoostPressed ? 5 : 1;
+
+        shipVelocity.y += getYVelocity(ship.rotation) * speedFactor;
+        shipVelocity.x += getXVelocity(ship.rotation) * speedFactor;
       }
       if (isSKeyDown) {
-        shipVelocity.y -= getYVelocity(ship.rotation);
-        shipVelocity.x -= getXVelocity(ship.rotation);
+        const speedFactor = isBoostPressed ? 5 : 1;
+
+        shipVelocity.y -= getYVelocity(ship.rotation) * speedFactor;
+        shipVelocity.x -= getXVelocity(ship.rotation) * speedFactor;
       }
 
       if (isAKeyDown) {
