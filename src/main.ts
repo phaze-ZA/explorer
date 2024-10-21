@@ -3,17 +3,13 @@ import { Ship } from "./ship";
 import { Planet } from "./planet";
 import { Star } from "./star";
 import { GUI } from "dat.gui";
+import { calculateParallax, getXVector, getYVector, randomNumber } from "./utils";
 
 const MAX_POS = 80000;
 const MAX_SPEED = 0.25;
 const VANISHING_POINT = 10;
 const BG_LAYER_DISTANCE = 9;
 const MID_LAYER_DISTANCE = 6;
-
-function calculateParallax(x: number, distance: number, vanishingPoint: number): number {
-  const angle = Math.atan2(x, vanishingPoint);
-  return (vanishingPoint - distance) * Math.tan(angle);
-}
 
 async function bootstrap() {
   const app = new Application();
@@ -27,45 +23,60 @@ async function bootstrap() {
 
   document.body.appendChild(app.canvas);
   app.canvas.setAttribute('style', 'display: block;');
-  await Assets.load('spaceShips_001.png');
+  const bundle = [];
+  const planetBundle = [];
+  for (let i = 0; i < 10; i++) {
+    planetBundle.push({ alias: `planetLight-${i}`, src: `planets/light${i}.png` });
+  }
+  for (let i = 0; i < 28; i++) {
+    const noisePrefix = i < 10 ? '0' : '';
+    planetBundle.push({ alias: `planetNoise-${i}`, src: `planets/noise${noisePrefix}${i}.png` });
+  }
+  for (let i = 0; i < 3; i++) {
+    planetBundle.push({ alias: `sphere-${i}`, src: `planets/sphere${i}.png` });
+    bundle.push({ alias: `star-${i}`, src: `stars/star${i + 1}.png` });
+  }
+  let meteorCounter = 0;
+  for (let i = 0; i < 4; i++) {
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_big${i + 1}.png` });
+    meteorCounter++;
+
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_big${i + 1}.png` });
+    meteorCounter++;
+  }
+  for (let i = 0; i < 2; i++) {
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_med${i + 1}.png` });
+    meteorCounter++;
+
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_small${i + 1}.png` });
+    meteorCounter++;
+
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_tiny${i + 1}.png` });
+    meteorCounter++;
+
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_med${i + 1}.png` });
+    meteorCounter++;
+
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_small${i + 1}.png` });
+    meteorCounter++;
+
+    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_tiny${i + 1}.png` });
+    meteorCounter++;
+  }
+  bundle.push({ alias: 'ship', src: 'spaceShips_001.png' });
+  Assets.addBundle('planetAssets', planetBundle);
+  Assets.addBundle('assets', bundle);
+  await Assets.loadBundle('assets');
+  await Assets.loadBundle('planetAssets');
   initialiseGame(app);
 }
 
 function addObject(object: Planet | Star, maxDistance: number = MAX_POS): Planet | Star {
   const maxMinusRadius = maxDistance - object.radius;
-  const x = object.radius + Math.floor(Math.random() * (maxMinusRadius * 2));
-  const y = object.radius + Math.floor(Math.random() * (maxMinusRadius * 2));
+  const x = randomNumber(maxMinusRadius * 2, object.radius);
+  const y = randomNumber(maxMinusRadius * 2, object.radius);
   object.position.set(x, y);
   return object;
-}
-
-function getXVelocity(currentAngle: number): number {
-  const cosVal = Math.sin(currentAngle);
-  const magnitude = MAX_SPEED * cosVal;
-
-  if (Math.abs(magnitude) > MAX_SPEED) {
-    throw new Error(`What the fuck happened here?
-Magnitude:    ${magnitude}
-currentAngle: ${currentAngle}
-cosVal:       ${cosVal}
-yComp:        ${MAX_SPEED}`);
-  }
-  return -magnitude;
-}
-
-function getYVelocity(currentAngle: number): number {
-  const sinVal = Math.cos(currentAngle);
-  const magnitude = MAX_SPEED * sinVal;
-
-  if (Math.abs(magnitude) > MAX_SPEED) {
-    throw new Error(`What the fuck happened here?
-Magnitude:    ${magnitude}
-currentAngle: ${currentAngle}
-sinVal:       ${sinVal}
-xComp:        ${MAX_SPEED}`);
-  }
-
-  return magnitude;
 }
 
 function initialiseGame(app: Application) {
@@ -94,16 +105,16 @@ function initialiseGame(app: Application) {
 
   const gui = new GUI();
   const universeFolder = gui.addFolder('Universe');
-  universeFolder.add({ numObjects: 1000 }, 'numObjects', 100, 50000).onFinishChange((value) => {
+  universeFolder.add({ numObjects: 1000 }, 'numObjects', 100, 10000).onFinishChange((value) => {
     setObjects(value);
   }).name('No. Objects');
 
   let isPointerDown = false;
   let isTouch = false;
-  let isWKeyDown = false;
-  let isSKeyDown = false;
-  let isAKeyDown = false;
-  let isDKeyDown = false;
+  let isAcceleratorPressed = false;
+  let isDeceleratorPressed = false;
+  let isYawLeftPressed = false;
+  let isYawRightPressed = false;
   let isBrakePressed = false;
   let isBoostPressed = false;
   let eventX = 0;
@@ -120,14 +131,13 @@ function initialiseGame(app: Application) {
     cameraLayer.addChild(new Graphics().rect(0, 0, mapSize, mapSize).stroke({ color: 0x000066 }));
 
     for (let i = 0; i < numObjects; i++) {
-      const planetRadius = Math.ceil(Math.random() * 100) + 10;
-      const starRadius = Math.ceil(Math.random() * 10);
-      const starPoints = Math.ceil(Math.random() * 5) + 4;
-      const nearStarRadius = Math.ceil(Math.random() * 20) + 10;
+      const planetRadius = randomNumber(100, 10);
+      const starRadius = randomNumber(1.4, 0.2);
+      const nearStarRadius = randomNumber(1.7, 0.5);
 
       const planet = new Planet(planetRadius);
-      const star = new Star(starRadius, starPoints);
-      const nearStar = new Star(nearStarRadius, starPoints);
+      const star = new Star(starRadius);
+      const nearStar = new Star(nearStarRadius);
 
       bgLayer.addChild(addObject(star, bgLayerSize / 2));
       midLayer.addChild(addObject(nearStar, midLayerSize / 2));
@@ -196,19 +206,19 @@ function initialiseGame(app: Application) {
     switch (event.key) {
       case 'W':
       case 'w':
-        isWKeyDown = true;
+        isAcceleratorPressed = true;
         break;
       case 'S':
       case 's':
-        isSKeyDown = true;
+        isDeceleratorPressed = true;
         break;
       case 'A':
       case 'a':
-        isAKeyDown = true;
+        isYawLeftPressed = true;
         break;
       case 'D':
       case 'd':
-        isDKeyDown = true;
+        isYawRightPressed = true;
         break;
       case 'Shift':
         isBoostPressed = true;
@@ -223,19 +233,19 @@ function initialiseGame(app: Application) {
     switch (event.key) {
       case 'W':
       case 'w':
-        isWKeyDown = false;
+        isAcceleratorPressed = false;
         break;
       case 'A':
       case 'a':
-        isAKeyDown = false;
+        isYawLeftPressed = false;
         break;
       case 'S':
       case 's':
-        isSKeyDown = false;
+        isDeceleratorPressed = false;
         break;
       case 'D':
       case 'd':
-        isDKeyDown = false;
+        isYawRightPressed = false;
         break;
       case 'Shift':
         isBoostPressed = false;
@@ -255,65 +265,65 @@ function initialiseGame(app: Application) {
 
     if (isPointerDown || isTouch) {
       ship.rotation = Math.atan2(eventX - ship.x, -(eventY - ship.y));
-      shipVelocity.y += getYVelocity(ship.rotation);
-      shipVelocity.x += getXVelocity(ship.rotation);
+      shipVelocity.y += getYVector(ship.rotation, MAX_SPEED);
+      shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED);
     } else {
-      if (isWKeyDown) {
+      if (isAcceleratorPressed) {
         const speedFactor = isBoostPressed ? 5 : 1;
 
-        shipVelocity.y += getYVelocity(ship.rotation) * speedFactor;
-        shipVelocity.x += getXVelocity(ship.rotation) * speedFactor;
+        shipVelocity.y += getYVector(ship.rotation, MAX_SPEED) * speedFactor;
+        shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED) * speedFactor;
       }
-      if (isSKeyDown) {
+      if (isDeceleratorPressed) {
         const speedFactor = isBoostPressed ? 5 : 1;
 
-        shipVelocity.y -= getYVelocity(ship.rotation) * speedFactor;
-        shipVelocity.x -= getXVelocity(ship.rotation) * speedFactor;
+        shipVelocity.y -= getYVector(ship.rotation, MAX_SPEED) * speedFactor;
+        shipVelocity.x -= -getXVector(ship.rotation, MAX_SPEED) * speedFactor;
       }
 
-      if (isAKeyDown) {
+      if (isYawLeftPressed) {
         ship.rotation -= 0.1;
       }
-      if (isDKeyDown) {
+      if (isYawRightPressed) {
         ship.rotation += 0.1;
       }
 
       if (isBrakePressed) {
         const velocityAngle = Math.atan2(shipVelocity.x, shipVelocity.y);
-        const xVelocity = getXVelocity(velocityAngle);
-        const yVelocity = getYVelocity(velocityAngle);
+        const xVelocity = -getXVector(velocityAngle, MAX_SPEED);
+        const yVelocity = getYVector(velocityAngle, MAX_SPEED);
         if (Math.abs(shipVelocity.x) - Math.abs(xVelocity) < 0) {
           shipVelocity.x = 0;
         }
         if (Math.abs(shipVelocity.y) - Math.abs(yVelocity) < 0) {
           shipVelocity.y = 0;
         }
-        if (shipVelocity.x != 0) {
+        if (shipVelocity.x !== 0) {
           shipVelocity.x += xVelocity;
         }
-        if (shipVelocity.y != 0) {
+        if (shipVelocity.y !== 0) {
           shipVelocity.y -= yVelocity;
         }
       }
     }
 
-    if (leftEdge + shipVelocity.x >= ship.x - ship.width / 2) {
-      const distanceToEdge = (ship.x - ship.width / 2) - leftEdge;
+    if (leftEdge + shipVelocity.x >= ship.x) {
+      const distanceToEdge = ship.x - leftEdge;
       shipVelocity.x = distanceToEdge;
     }
 
-    if (rightEdge + shipVelocity.x <= ship.x + ship.width / 2) {
-      const distanceToEdge = (ship.x + ship.width / 2) - rightEdge;
+    if (rightEdge + shipVelocity.x <= ship.x) {
+      const distanceToEdge = ship.x - rightEdge;
       shipVelocity.x = distanceToEdge;
     }
 
-    if (topEdge + shipVelocity.y >= ship.y - ship.height / 2) {
-      const distanceToEdge = (ship.y - ship.height / 2) - topEdge;
+    if (topEdge + shipVelocity.y >= ship.y) {
+      const distanceToEdge = ship.y - topEdge;
       shipVelocity.y = distanceToEdge;
     }
 
-    if (bottomEdge + shipVelocity.y <= ship.y + ship.height / 2) {
-      const distanceToEdge = (ship.y + ship.height / 2) - bottomEdge;
+    if (bottomEdge + shipVelocity.y <= ship.y) {
+      const distanceToEdge = ship.y - bottomEdge;
       shipVelocity.y = distanceToEdge;
     }
 

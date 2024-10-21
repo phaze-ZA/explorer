@@ -1,11 +1,19 @@
-import { Container, Graphics } from "pixi.js";
+import { Container, Sprite } from "pixi.js";
+import { randomNumber } from "./utils";
 
 export class Star extends Container {
   constructor(
-    public readonly radius: number,
-    public readonly points: number,
+    public readonly radius: number
   ) {
     super();
-    this.addChild(new Graphics().star(0, 0, points, radius).fill({ color: 0xffffff }));
+    const isStar = randomNumber(5) < 4;
+    if (isStar) {
+      const starId = randomNumber(3);
+      this.addChild(Sprite.from(`star-${starId}`)).scale.set(radius);
+    }
+    else {
+      const meteorId = randomNumber(20);
+      this.addChild(Sprite.from(`meteor-${meteorId}`)).scale.set(radius);
+    }
   }
 }
