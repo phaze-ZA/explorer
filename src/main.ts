@@ -4,12 +4,13 @@ import { Planet } from "./planet";
 import { Star } from "./star";
 import { GUI } from "dat.gui";
 import { calculateParallax, getXVector, getYVector, randomNumber } from "./utils";
+import { ShipStates } from "./types";
 
-const MAX_POS = 80000;
+const MAX_POS = 50000;
 const MAX_SPEED = 0.25;
 const VANISHING_POINT = 10;
 const BG_LAYER_DISTANCE = 9;
-const MID_LAYER_DISTANCE = 6;
+const MID_LAYER_DISTANCE = 8.7;
 
 async function bootstrap() {
   const app = new Application();
@@ -25,56 +26,47 @@ async function bootstrap() {
   app.canvas.setAttribute('style', 'display: block;');
   const bundle = [];
   const planetBundle = [];
+  const effectsBundle = [
+    { alias: 'speed', src: 'effects/speed.png' },
+    { alias: 'blue_low', src: 'effects/blue_low.png' },
+    { alias: 'blue_med', src: 'effects/blue_med.png' },
+    { alias: 'blue_high', src: 'effects/blue_high.png' },
+    { alias: 'orange_low', src: 'effects/orange_low.png' },
+    { alias: 'orange_med', src: 'effects/orange_med.png' },
+    { alias: 'orange_high', src: 'effects/orange_high.png' },
+    { alias: 'green', src: 'effects/green.png' }
+  ];
+
   for (let i = 0; i < 10; i++) {
     planetBundle.push({ alias: `planetLight-${i}`, src: `planets/light${i}.png` });
   }
+
   for (let i = 0; i < 28; i++) {
     const noisePrefix = i < 10 ? '0' : '';
     planetBundle.push({ alias: `planetNoise-${i}`, src: `planets/noise${noisePrefix}${i}.png` });
   }
+
   for (let i = 0; i < 3; i++) {
     planetBundle.push({ alias: `sphere-${i}`, src: `planets/sphere${i}.png` });
     bundle.push({ alias: `star-${i}`, src: `stars/star${i + 1}.png` });
   }
-  let meteorCounter = 0;
-  for (let i = 0; i < 4; i++) {
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_big${i + 1}.png` });
-    meteorCounter++;
 
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_big${i + 1}.png` });
-    meteorCounter++;
-  }
-  for (let i = 0; i < 2; i++) {
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_med${i + 1}.png` });
-    meteorCounter++;
-
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_small${i + 1}.png` });
-    meteorCounter++;
-
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorBrown_tiny${i + 1}.png` });
-    meteorCounter++;
-
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_med${i + 1}.png` });
-    meteorCounter++;
-
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_small${i + 1}.png` });
-    meteorCounter++;
-
-    bundle.push({ alias: `meteor-${meteorCounter}`, src: `meteors/meteorGrey_tiny${i + 1}.png` });
-    meteorCounter++;
-  }
   bundle.push({ alias: 'ship', src: 'spaceShips_001.png' });
+  bundle.push({ alias: 'booster', src: 'fire11.png' });
   Assets.addBundle('planetAssets', planetBundle);
+  Assets.addBundle('effects', effectsBundle);
   Assets.addBundle('assets', bundle);
   await Assets.loadBundle('assets');
   await Assets.loadBundle('planetAssets');
+  await Assets.loadBundle('effects');
   initialiseGame(app);
 }
 
-function addObject(object: Planet | Star, maxDistance: number = MAX_POS): Planet | Star {
-  const maxMinusRadius = maxDistance - object.radius;
-  const x = randomNumber(maxMinusRadius * 2, object.radius);
-  const y = randomNumber(maxMinusRadius * 2, object.radius);
+function addObject(object: Planet | Star, maxDistance: number): Planet | Star {
+  const maxMinusWidth = maxDistance - object.width / 2;
+  const maxMinusHeight = maxDistance - object.height / 2;
+  const x = randomNumber(maxMinusWidth * 2, object.width / 2);
+  const y = randomNumber(maxMinusHeight * 2, object.height / 2);
   object.position.set(x, y);
   return object;
 }
@@ -131,9 +123,9 @@ function initialiseGame(app: Application) {
     cameraLayer.addChild(new Graphics().rect(0, 0, mapSize, mapSize).stroke({ color: 0x000066 }));
 
     for (let i = 0; i < numObjects; i++) {
-      const planetRadius = randomNumber(100, 10);
-      const starRadius = randomNumber(1.4, 0.2);
-      const nearStarRadius = randomNumber(1.7, 0.5);
+      const planetRadius = randomNumber(50, 10);
+      const starRadius = randomNumber(1.1, 0.2);
+      const nearStarRadius = randomNumber(1.7, 0.8);
 
       const planet = new Planet(planetRadius);
       const star = new Star(starRadius);
@@ -267,15 +259,23 @@ function initialiseGame(app: Application) {
       ship.rotation = Math.atan2(eventX - ship.x, -(eventY - ship.y));
       shipVelocity.y += getYVector(ship.rotation, MAX_SPEED);
       shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED);
+      ship.setState(ShipStates.ACCELERATING);
     } else {
       if (isAcceleratorPressed) {
         const speedFactor = isBoostPressed ? 5 : 1;
+        const shipState = isBoostPressed ? ShipStates.BOOSTING : ShipStates.ACCELERATING;
+
+        ship.setState(shipState);
 
         shipVelocity.y += getYVector(ship.rotation, MAX_SPEED) * speedFactor;
         shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED) * speedFactor;
       }
+      else {
+        ship.setState(ShipStates.IDLE);
+      }
       if (isDeceleratorPressed) {
         const speedFactor = isBoostPressed ? 5 : 1;
+        ship.setState(ShipStates.DECELERATING);
 
         shipVelocity.y -= getYVector(ship.rotation, MAX_SPEED) * speedFactor;
         shipVelocity.x -= -getXVector(ship.rotation, MAX_SPEED) * speedFactor;

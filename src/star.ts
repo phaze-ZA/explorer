@@ -6,14 +6,10 @@ export class Star extends Container {
     public readonly radius: number
   ) {
     super();
-    const isStar = randomNumber(5) < 4;
-    if (isStar) {
-      const starId = randomNumber(3);
-      this.addChild(Sprite.from(`star-${starId}`)).scale.set(radius);
-    }
-    else {
-      const meteorId = randomNumber(20);
-      this.addChild(Sprite.from(`meteor-${meteorId}`)).scale.set(radius);
-    }
+    const starId = randomNumber(3);
+    const starSprite = Sprite.from(`star-${starId}`);
+    starSprite.scale.set(radius);
+    starSprite.anchor.set(0.5);
+    this.addChild(starSprite);
   }
 }
