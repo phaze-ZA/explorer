@@ -25,6 +25,6 @@ export class Planet extends Container {
     light.anchor.set(0.5);
     this.scale.set(radius / 100);
     this.addChild(sphere, noise, atmosphere, light);
-    this.enableRenderGroup();
+    this.cullable = true;
   }
 }

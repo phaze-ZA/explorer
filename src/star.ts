@@ -6,6 +6,7 @@ export class Star extends Container {
     public readonly radius: number
   ) {
     super();
+    this.cullable = true;
     const starId = randomNumber(3);
     const starSprite = Sprite.from(`star-${starId}`);
     starSprite.scale.set(radius);
