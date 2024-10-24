@@ -8,11 +8,15 @@ export class Ship extends Container {
   constructor() {
     super();
     this._boost = this.addChild(new Boost('blue'));
-    this._boost.y = 36;
+    this._boost.y = 30;
     // this._boost.visible = false;
     const sprite = this.addChild(Sprite.from('ship'));
     sprite.anchor.set(0.5);
-    sprite.scale.set(0.3, -0.3);
+    sprite.scale.set(0.25, -0.25);
+  }
+
+  turn(direction: 1 | -1 | 0): void {
+    this._boost.rotation = direction * Math.PI / 9;
   }
 
   setState(state: ShipStates): void {
