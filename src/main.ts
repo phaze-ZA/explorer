@@ -127,6 +127,9 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
   let eventY = 0;
 
   const setObjects = function(numObjects: number) {
+    bgLayer.reset();
+    midLayer.reset();
+    cameraLayer.reset();
     for (let i = 0; i < numObjects; i++) {
       const planetRadius = randomNumber(50, 10);
       const starRadius = randomNumber(2, 1);

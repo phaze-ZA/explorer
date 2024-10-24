@@ -11,7 +11,7 @@ export class Layer extends Container {
       .rect(0, 0, width, height)
       .stroke({ color: 0x222222, width: (1 / scale) }));
     this.border.label = 'border';
-    this.border.position.set(-width / 2, -height / 2);
+    this.border.position.set(-this.border.width / 2, -this.border.height / 2);
     this.scale.set(scale);
   }
 
@@ -23,6 +23,11 @@ export class Layer extends Container {
   removeObjects(): void {
     this.removeChild(...this.objects);
     this.objects = [];
+  }
+
+  reset(): void {
+    this.removeObjects();
+    this.border.position.set(-this.border.width / 2, -this.border.height / 2);
   }
 
   update(deltaTime: number): void {
