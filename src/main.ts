@@ -20,6 +20,8 @@ async function bootstrap() {
   await app.init({
     backgroundColor: '#000000',
     resizeTo: window,
+    // @ts-ignore
+    canvas: document.getElementById('game')
   });
 
   document.body.appendChild(app.canvas);
@@ -52,7 +54,6 @@ async function bootstrap() {
   }
 
   bundle.push({ alias: 'ship', src: 'spaceShips_001.png' });
-  bundle.push({ alias: 'booster', src: 'fire11.png' });
   Assets.addBundle('planetAssets', planetBundle);
   Assets.addBundle('effects', effectsBundle);
   Assets.addBundle('assets', bundle);
@@ -85,12 +86,9 @@ function initialiseGame(app: Application) {
   ship.y = window.innerHeight * 0.75;
 
   bgLayer.position.set(ship.x - bgLayerSize / 2, ship.y - bgLayerSize / 2);
-  bgLayer.enableRenderGroup();
 
-  midLayer.enableRenderGroup();
   midLayer.position.set(ship.x - midLayerSize / 2, ship.y - midLayerSize / 2);
 
-  cameraLayer.enableRenderGroup();
   cameraLayer.position.set(ship.x - mapSize / 2, ship.y - mapSize / 2);
 
   let shipVelocity = new Point(0, 0);
