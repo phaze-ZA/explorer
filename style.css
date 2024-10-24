@@ -4,6 +4,10 @@ body {
   overscroll-behavior: none;
 }
 
+#game {
+  display: block;
+}
+
 html {
   overscroll-behavior: none;
 }

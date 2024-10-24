@@ -5,6 +5,7 @@ import { Star } from "./star";
 import { GUI } from "dat.gui";
 import { calculateParallax, getXVector, getYVector, randomNumber } from "./utils";
 import { ShipStates } from "./types";
+import Stats from 'stats.js';
 
 const MAX_POS = 50000;
 const MAX_SPEED = 0.25;
@@ -20,12 +21,11 @@ async function bootstrap() {
   await app.init({
     backgroundColor: '#000000',
     resizeTo: window,
+    width: window.innerWidth,
     // @ts-ignore
     canvas: document.getElementById('game')
   });
 
-  document.body.appendChild(app.canvas);
-  app.canvas.setAttribute('style', 'display: block;');
   const bundle = [];
   const planetBundle = [];
   const effectsBundle = [
@@ -77,11 +77,19 @@ function initialiseGame(app: Application) {
   const bgLayerSize = calculateParallax(mapSize, BG_LAYER_DISTANCE, VANISHING_POINT);
   const midLayerSize = calculateParallax(mapSize, MID_LAYER_DISTANCE, VANISHING_POINT);
 
-  const bgLayer = app.stage.addChild(new Container());
-  const midLayer = app.stage.addChild(new Container());
-  const cameraLayer = app.stage.addChild(new Container());
+  const environmentLayer = app.stage.addChild(new Container());
+  environmentLayer.enableRenderGroup();
+  const playerLayer = app.stage.addChild(new Container());
+  playerLayer.enableRenderGroup();
 
-  const ship = app.stage.addChild(new Ship());
+  const bgLayer = environmentLayer.addChild(new Container());
+  bgLayer.enableRenderGroup();
+  const midLayer = environmentLayer.addChild(new Container());
+  midLayer.enableRenderGroup();
+  const cameraLayer = environmentLayer.addChild(new Container());
+  cameraLayer.enableRenderGroup();
+
+  const ship = playerLayer.addChild(new Ship());
   ship.x = window.innerWidth / 2;
   ship.y = window.innerHeight * 0.75;
 
@@ -98,6 +106,10 @@ function initialiseGame(app: Application) {
   universeFolder.add({ numObjects: 1000 }, 'numObjects', 100, 10000).onFinishChange((value) => {
     setObjects(value);
   }).name('No. Objects');
+
+  const stats = new Stats();
+  stats.showPanel(0);
+  document.body.appendChild(stats.dom);
 
   let isPointerDown = false;
   let isTouch = false;
@@ -248,6 +260,7 @@ function initialiseGame(app: Application) {
 
   app.ticker.maxFPS = 60;
   app.ticker.add(() => {
+    stats.begin();
     const topEdge = cameraLayer.y;
     const bottomEdge = cameraLayer.y + cameraLayer.height;
     const leftEdge = cameraLayer.x;
@@ -331,6 +344,7 @@ function initialiseGame(app: Application) {
     midLayer.y += calculateParallax(shipVelocity.y, MID_LAYER_DISTANCE, VANISHING_POINT);
     cameraLayer.x += shipVelocity.x;
     cameraLayer.y += shipVelocity.y;
+    stats.end();
   });
 }
 
