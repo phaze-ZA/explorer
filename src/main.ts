@@ -8,7 +8,7 @@ import { ShipStates } from "./types";
 import Stats from 'stats.js';
 
 const MAX_POS = 50000;
-const MAX_SPEED = 0.02;
+const MAX_SPEED = 0.2;
 const VANISHING_POINT = 10;
 const BG_LAYER_DISTANCE = 9;
 const MID_LAYER_DISTANCE = 8.7;
@@ -259,7 +259,7 @@ function initialiseGame(app: Application) {
   }
 
   app.ticker.maxFPS = 60;
-  app.ticker.add(({ deltaMS }) => {
+  app.ticker.add(({ deltaTime }) => {
     stats.begin();
     const topEdge = cameraLayer.y;
     const bottomEdge = cameraLayer.y + cameraLayer.height;
@@ -268,8 +268,8 @@ function initialiseGame(app: Application) {
 
     if (isPointerDown || isTouch) {
       ship.rotation = Math.atan2(eventX - ship.x, -(eventY - ship.y));
-      shipVelocity.y += getYVector(ship.rotation, MAX_SPEED) * deltaMS;
-      shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED * deltaMS);
+      shipVelocity.y += getYVector(ship.rotation, MAX_SPEED) * deltaTime;
+      shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED * deltaTime);
       ship.setState(ShipStates.ACCELERATING);
     } else {
       if (isAcceleratorPressed) {
@@ -278,8 +278,8 @@ function initialiseGame(app: Application) {
 
         ship.setState(shipState);
 
-        shipVelocity.y += getYVector(ship.rotation, MAX_SPEED) * speedFactor * deltaMS;
-        shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED) * speedFactor * deltaMS;
+        shipVelocity.y += getYVector(ship.rotation, MAX_SPEED) * speedFactor * deltaTime;
+        shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED) * speedFactor * deltaTime;
       }
       else {
         ship.setState(ShipStates.IDLE);
@@ -288,8 +288,8 @@ function initialiseGame(app: Application) {
         const speedFactor = isBoostPressed ? 5 : 1;
         ship.setState(ShipStates.DECELERATING);
 
-        shipVelocity.y -= getYVector(ship.rotation, MAX_SPEED) * speedFactor * deltaMS;
-        shipVelocity.x -= -getXVector(ship.rotation, MAX_SPEED) * speedFactor * deltaMS;
+        shipVelocity.y -= getYVector(ship.rotation, MAX_SPEED) * speedFactor * deltaTime;
+        shipVelocity.x -= -getXVector(ship.rotation, MAX_SPEED) * speedFactor * deltaTime;
       }
 
       if (isYawLeftPressed) {
@@ -301,8 +301,8 @@ function initialiseGame(app: Application) {
 
       if (isBrakePressed) {
         const velocityAngle = Math.atan2(shipVelocity.x, shipVelocity.y);
-        const xVelocity = -getXVector(velocityAngle, MAX_SPEED) * deltaMS;
-        const yVelocity = getYVector(velocityAngle, MAX_SPEED) * deltaMS;
+        const xVelocity = -getXVector(velocityAngle, MAX_SPEED) * deltaTime;
+        const yVelocity = getYVector(velocityAngle, MAX_SPEED) * deltaTime;
         if (Math.abs(shipVelocity.x) - Math.abs(xVelocity) < 0) {
           shipVelocity.x = 0;
         }
@@ -310,10 +310,10 @@ function initialiseGame(app: Application) {
           shipVelocity.y = 0;
         }
         if (shipVelocity.x !== 0) {
-          shipVelocity.x += xVelocity * deltaMS;
+          shipVelocity.x += xVelocity * deltaTime;
         }
         if (shipVelocity.y !== 0) {
-          shipVelocity.y -= yVelocity * deltaMS;
+          shipVelocity.y -= yVelocity * deltaTime;
         }
       }
     }
