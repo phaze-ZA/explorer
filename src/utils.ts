@@ -1,5 +1,9 @@
-export function randomNumber(maxExclusive: number, minInclusive: number = 0): number {
-  return Math.floor(Math.random() * maxExclusive) + minInclusive;
+export function randomNumber(maxExclusive: number): number {
+  return Math.floor(Math.random() * maxExclusive);
+}
+
+export function randomNumberBetween(minInclusive: number, maxExclusive: number): number {
+  return Math.floor(Math.random() * (maxExclusive - minInclusive + 1)) + minInclusive;
 }
 
 export function getRandomColor(): string {
@@ -14,8 +18,8 @@ export function getRandomColor(): string {
   return `#${hexR}${hexG}${hexB}`;
 }
 
-export function calculateParallax(x: number, distance: number, vanishingPoint: number): number {
-  const angle = Math.atan2(x, vanishingPoint);
+export function calculateParallax(maxValue: number, distance: number, vanishingPoint: number): number {
+  const angle = Math.atan2(maxValue, vanishingPoint);
   return (vanishingPoint - distance) * Math.tan(angle);
 }
 

@@ -1,14 +1,15 @@
 import { Assets, autoDetectRenderer, Container, Point, Renderer, Ticker } from "pixi.js";
-import { Ship } from "./ship";
-import { Planet } from "./planet";
-import { Star } from "./star";
+import { Ship } from "./objects/ship";
+import { Planet } from "./objects/planet";
+import { Star } from "./objects/star";
 import { GUI } from "dat.gui";
-import { getXVector, getYVector, randomNumber } from "./utils";
+import { calculateParallax, getXVector, getYVector, randomNumberBetween } from "./utils";
 import { ShipStates } from "./types";
 import Stats from 'stats.js';
 import { Layer } from "./layer";
 
-const MAX_POS = 50000;
+const MAX_POS = 10000;
+const VANISHING_POINT = 200000;
 const MAX_SPEED = 0.2;
 
 async function bootstrap() {
@@ -82,13 +83,18 @@ async function bootstrap() {
 
 function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Ticker }) {
   const { stage, renderer, ticker } = app;
-  const mapSize = MAX_POS * 2;
   const shipVelocity = new Point(0);
   const numObjects = {
-    bg: 10000,
-    mid: 5000,
-    fg: 1000
+    stars: 10000,
+    planets: 1000
   };
+
+  const universeConstants = {
+    vanishingPoint: VANISHING_POINT,
+    mapSize: MAX_POS,
+    maxSpeed: MAX_SPEED
+  };
+  const mapSize = universeConstants.mapSize * 2;
 
   const environmentLayer = stage.addChild(new Container());
   environmentLayer.label = 'environment-layer';
@@ -107,93 +113,77 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
   const bgLayer = environmentLayer
     .addChild(
       new Layer(
-        mapSize,
-        mapSize,
-        0.1,
         {
-          start: new Point(-renderEdgeX * 1 / 0.1, -renderEdgeY * 1 / 0.1),
-          end: new Point(renderEdgeX * 1 / 0.1, renderEdgeY * 1 / 0.1)
-        }
+          start: new Point(-renderEdgeX, -renderEdgeY),
+          end: new Point(renderEdgeX, renderEdgeY)
+        },
+        universeConstants.vanishingPoint
       ));
   bgLayer.label = 'bg-layer';
   bgLayer.position = ship.position;
 
-  const midLayer = environmentLayer
-    .addChild(
-      new Layer(
-        mapSize,
-        mapSize,
-        0.3,
-        {
-          start: new Point(-renderEdgeX * 1 / 0.3, -renderEdgeY * 1 / 0.3),
-          end: new Point(renderEdgeX * 1 / 0.3, renderEdgeY * 1 / 0.3)
-        }
-      ));
-  midLayer.label = 'mid-layer';
-  midLayer.position = ship.position;
-
-  const fgLayer = environmentLayer
-    .addChild(
-      new Layer(
-        mapSize,
-        mapSize,
-        1,
-        {
-          start: new Point(-renderEdgeX, -renderEdgeY),
-          end: new Point(renderEdgeX, renderEdgeY)
-        })
-    );
-  fgLayer.label = 'camera-layer';
-  fgLayer.position = ship.position;
-
   const resetLayers = () => {
     bgLayer.removeObjects();
-    bgLayer.reset();
-    setBgObjects(numObjects.bg);
-
-    midLayer.removeObjects();
-    midLayer.reset();
-    setMidObjects(numObjects.mid);
-
-    fgLayer.removeObjects();
-    fgLayer.reset();
-    setFgObjects(numObjects.fg);
+    bgLayer.vanishingPoint = universeConstants.vanishingPoint;
+    setStars(numObjects.stars);
+    setPlanets(numObjects.planets);
   };
 
-  const setBgObjects = function(numObjects: number): void {
+  const setStars = function(numObjects: number): void {
     for (let i = 0; i < numObjects; i++) {
-      const starRadius = randomNumber(2, 1);
+      const starDistance = randomNumberBetween(universeConstants.vanishingPoint * 0.9, universeConstants.vanishingPoint - 1);
+      const starRadius = calculateParallax(5, starDistance, universeConstants.vanishingPoint);
 
-      const star = new Star(starRadius);
+      const star = new Star(starDistance);
+      star.scale.set(starRadius);
+
+      const minSize = 1.5;
+      if (star.width < minSize) {
+        const ratio = minSize / star.width;
+        star.width *= ratio;
+        star.height *= ratio;
+      }
+      if (star.height < minSize) {
+        const ratio = minSize / star.width;
+        star.width *= ratio;
+        star.height *= ratio;
+      }
+
+      star.zIndex = universeConstants.vanishingPoint - starDistance;
 
       bgLayer.addObject(star).position.set(
-        randomNumber(mapSize, -mapSize / 2),
-        randomNumber(mapSize, -mapSize / 2)
+        randomNumberBetween(-mapSize / 2, mapSize / 2),
+        randomNumberBetween(-mapSize / 2, mapSize / 2),
       );
     }
   };
 
-  const setMidObjects = function(numObjects: number) {
+  const setPlanets = function(numObjects: number) {
     for (let i = 0; i < numObjects; i++) {
-      const nearStarRadius = randomNumber(2, 1);
+      const planetDistance = randomNumberBetween(1, universeConstants.vanishingPoint / 2);
+      const planetRadius = calculateParallax(0.5, planetDistance, universeConstants.vanishingPoint);
 
-      const nearStar = new Star(nearStarRadius);
+      const planet = new Planet(planetDistance);
+      planet.scale.set(planetRadius);
+      const minSize = 20;
 
-      midLayer.addObject(nearStar).position.set(
-        randomNumber(mapSize, -mapSize / 2),
-        randomNumber(mapSize, -mapSize / 2));
-    }
-  };
+      if (planet.width < minSize) {
+        const ratio = minSize / planet.width;
+        planet.width *= ratio;
+        planet.height *= ratio;
+      }
 
-  const setFgObjects = function(numObjects: number) {
-    for (let i = 0; i < numObjects; i++) {
-      const planetRadius = randomNumber(50, 10);
+      if (planet.height < minSize) {
+        const ratio = minSize / planet.width;
+        planet.width *= ratio;
+        planet.height *= ratio;
+      }
 
-      const planet = new Planet(planetRadius);
+      planet.zIndex = universeConstants.vanishingPoint - planetDistance;
 
-      fgLayer.addObject(planet).position.set(
-        randomNumber(mapSize, -mapSize / 2),
-        randomNumber(mapSize, -mapSize / 2),
+      bgLayer.addObject(planet).position.set(
+        randomNumberBetween(-mapSize * 5, mapSize * 5),
+        randomNumberBetween(-mapSize * 5, mapSize * 5),
       )
     }
   };
@@ -204,19 +194,26 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
   const gui = new GUI();
   const universeFolder = gui.addFolder('Universe');
   universeFolder
-    .add(numObjects, 'bg', 1000, 30000)
+    .add(numObjects, 'stars', 1000, 30000)
     .onFinishChange(() => resetLayers())
-    .name('Bg Objects');
+    .name('Num Stars');
 
   universeFolder
-    .add(numObjects, 'mid', 500, 15000)
+    .add(numObjects, 'planets', 100, 10000)
     .onFinishChange(() => resetLayers())
-    .name('Mid Objects');
+    .name('Num Planets');
 
   universeFolder
-    .add(numObjects, 'fg', 100, 10000)
-    .onFinishChange(() => resetLayers())
-    .name('Fg Objects');
+    .add(universeConstants, 'vanishingPoint', 1000, 100000)
+    .onFinishChange(() => resetLayers());
+
+  universeFolder
+    .add(universeConstants, 'mapSize', 1000, 100000)
+    .onFinishChange(() => resetLayers());
+
+  universeFolder
+    .add(universeConstants, 'maxSpeed', 0.01, 1)
+    .onFinishChange(() => resetLayers());
 
   // performance
   const stats = new Stats();
@@ -229,8 +226,6 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
     ship.x = renderer.width / 2;
     ship.y = renderer.height * 0.75;
     bgLayer.position = ship.position;
-    midLayer.position = ship.position;
-    fgLayer.position = ship.position;
   };
 
   // input
@@ -344,17 +339,12 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
   ticker.maxFPS = 60;
   ticker.add(({ deltaTime }) => {
     stats.begin();
-    const topEdge = fgLayer.border.y;
-    const bottomEdge = fgLayer.border.y + fgLayer.border.height;
-    const leftEdge = fgLayer.border.x;
-    const rightEdge = fgLayer.border.x + fgLayer.border.width;
-
     if (isPointerDown || isTouch) {
       const newRotation = Math.atan2(eventX - ship.x, -(eventY - ship.y));
       ship.turn(newRotation === ship.rotation ? 0 : newRotation > ship.rotation ? -1 : 1);
       ship.rotation = newRotation;
-      shipVelocity.y += getYVector(ship.rotation, MAX_SPEED);
-      shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED);
+      shipVelocity.y += getYVector(ship.rotation, universeConstants.maxSpeed);
+      shipVelocity.x += -getXVector(ship.rotation, universeConstants.maxSpeed);
       ship.setState(ShipStates.ACCELERATING);
     } else {
       if (isAcceleratorPressed) {
@@ -363,8 +353,8 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
 
         ship.setState(shipState);
 
-        shipVelocity.y += getYVector(ship.rotation, MAX_SPEED) * speedFactor;
-        shipVelocity.x += -getXVector(ship.rotation, MAX_SPEED) * speedFactor;
+        shipVelocity.y += getYVector(ship.rotation, universeConstants.maxSpeed) * speedFactor;
+        shipVelocity.x += -getXVector(ship.rotation, universeConstants.maxSpeed) * speedFactor;
       }
       else {
         ship.setState(ShipStates.IDLE);
@@ -373,8 +363,8 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
         const speedFactor = isBoostPressed ? 5 : 1;
         ship.setState(ShipStates.DECELERATING);
 
-        shipVelocity.y -= getYVector(ship.rotation, MAX_SPEED) * speedFactor;
-        shipVelocity.x -= -getXVector(ship.rotation, MAX_SPEED) * speedFactor;
+        shipVelocity.y -= getYVector(ship.rotation, universeConstants.maxSpeed) * speedFactor;
+        shipVelocity.x -= -getXVector(ship.rotation, universeConstants.maxSpeed) * speedFactor;
       }
 
       ship.turn(0);
@@ -390,8 +380,8 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
 
       if (isBrakePressed) {
         const velocityAngle = Math.atan2(shipVelocity.x, shipVelocity.y);
-        const xVelocity = -getXVector(velocityAngle, MAX_SPEED);
-        const yVelocity = getYVector(velocityAngle, MAX_SPEED);
+        const xVelocity = -getXVector(velocityAngle, universeConstants.maxSpeed);
+        const yVelocity = getYVector(velocityAngle, universeConstants.maxSpeed);
         if (Math.abs(shipVelocity.x) - Math.abs(xVelocity) < 0) {
           shipVelocity.x = 0;
         }
@@ -407,33 +397,8 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
       }
     }
 
-    if (leftEdge + shipVelocity.x >= 0) {
-      const distanceToEdge = 0 - leftEdge;
-      shipVelocity.x = distanceToEdge;
-    }
-
-    if (rightEdge + shipVelocity.x <= 0) {
-      const distanceToEdge = 0 - rightEdge;
-      shipVelocity.x = distanceToEdge;
-    }
-
-    if (topEdge + shipVelocity.y >= 0) {
-      const distanceToEdge = 0 - topEdge;
-      shipVelocity.y = distanceToEdge;
-    }
-
-    if (bottomEdge + shipVelocity.y <= 0) {
-      const distanceToEdge = 0 - bottomEdge;
-      shipVelocity.y = distanceToEdge;
-    }
-
     bgLayer.velocity.set(shipVelocity.x, shipVelocity.y);
-    midLayer.velocity.set(shipVelocity.x, shipVelocity.y);
-    fgLayer.velocity.set(shipVelocity.x, shipVelocity.y);
-
     bgLayer.update(deltaTime);
-    midLayer.update(deltaTime);
-    fgLayer.update(deltaTime);
 
     stats.end();
   });

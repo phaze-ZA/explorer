@@ -1,9 +1,10 @@
-import { Container, Sprite } from "pixi.js";
-import { getRandomColor, randomNumber } from "./utils";
+import { Sprite } from "pixi.js";
+import { getRandomColor, randomNumber } from "../utils";
+import { GameObject } from "../types";
 
-export class Planet extends Container {
+export class Planet extends GameObject {
   constructor(
-    public readonly radius: number,
+    public readonly distance: number
   ) {
     super();
     const sphereId = randomNumber(3);
@@ -23,7 +24,6 @@ export class Planet extends Container {
     atmosphere.anchor.set(0.5);
     light.alpha = 0.35;
     light.anchor.set(0.5);
-    this.scale.set(radius / 100);
     this.addChild(sphere, noise, atmosphere, light);
     this.cullable = true;
   }

@@ -1,28 +1,21 @@
-import { Container, Graphics, Point } from "pixi.js";
+import { Container, Point } from "pixi.js";
+import { GameObject } from "./types";
+import { calculateParallax } from "./utils";
 
 export class Layer extends Container {
   velocity: Point = new Point(0);
-  objects: Array<Container> = [];
-  border: Graphics;
+  objects: Array<GameObject> = [];
 
   constructor(
-    width: number,
-    height: number,
-    scale: number,
     private readonly _renderZone: {
       start: Point;
       end: Point
-    }) {
-    super({ isRenderGroup: true });
-    this.border = this.addChild(new Graphics()
-      .rect(0, 0, width, height)
-      .stroke({ color: 0x222222, width: (1 / scale) }));
-    this.border.label = 'border';
-    this.border.position.set(-this.border.width / 2, -this.border.height / 2);
-    this.scale.set(scale);
+    },
+    public vanishingPoint: number) {
+    super({ isRenderGroup: true, sortableChildren: true });
   }
 
-  addObject(object: Container): Container {
+  addObject(object: GameObject): Container {
     this.objects.push(object);
     return this.addChild(object);
   }
@@ -32,19 +25,13 @@ export class Layer extends Container {
     this.objects = [];
   }
 
-  reset(): void {
-    this.border.position.set(-this.border.width / 2, -this.border.height / 2);
-  }
-
   update(deltaTime: number): void {
     const deltaX = this.velocity.x * deltaTime;
     const deltaY = this.velocity.y * deltaTime;
 
-    this.border.x += deltaX;
-    this.border.y += deltaY;
     this.objects.forEach(object => {
-      object.x += deltaX;
-      object.y += deltaY;
+      object.x += calculateParallax(deltaX, object.distance, this.vanishingPoint);
+      object.y += calculateParallax(deltaY, object.distance, this.vanishingPoint);
 
       if (
         object.x >= this._renderZone.start.x

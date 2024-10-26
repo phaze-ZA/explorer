@@ -1,6 +1,6 @@
 import { Container, Sprite } from "pixi.js";
-import { ShipStates } from "./types";
-import { Boost } from "./effects/boost";
+import { ShipStates } from "../types";
+import { Boost } from "../effects/boost";
 
 export class Ship extends Container {
   private readonly _boost: Boost;
@@ -12,6 +12,7 @@ export class Ship extends Container {
     const sprite = this.addChild(Sprite.from('ship'));
     sprite.anchor.set(0.5);
     sprite.scale.set(0.25, -0.25);
+    this.scale.set(0.7);
   }
 
   turn(direction: 1 | -1 | 0): void {
