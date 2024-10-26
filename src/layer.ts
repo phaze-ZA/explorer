@@ -26,7 +26,6 @@ export class Layer extends Container {
   }
 
   reset(): void {
-    this.removeObjects();
     this.border.position.set(-this.border.width / 2, -this.border.height / 2);
   }
 

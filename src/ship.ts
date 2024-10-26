@@ -9,7 +9,6 @@ export class Ship extends Container {
     super();
     this._boost = this.addChild(new Boost('blue'));
     this._boost.y = 30;
-    // this._boost.visible = false;
     const sprite = this.addChild(Sprite.from('ship'));
     sprite.anchor.set(0.5);
     sprite.scale.set(0.25, -0.25);

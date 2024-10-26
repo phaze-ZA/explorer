@@ -16,10 +16,11 @@ async function bootstrap() {
     resolution: window.devicePixelRatio,
     width: window.innerWidth,
     height: window.innerHeight,
+    antialias: true,
+    autoDensity: true,
     // @ts-ignore
     canvas: document.getElementById('game'),
     backgroundColor: '#000000',
-    antialias: true
   });
 
   const stage = new Container();
@@ -71,8 +72,8 @@ async function bootstrap() {
   await Assets.loadBundle('effects');
 
   function animate() {
-    requestAnimationFrame(animate);
     renderer.render(stage);
+    requestAnimationFrame(animate);
   }
 
   animate();
@@ -82,39 +83,124 @@ async function bootstrap() {
 function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Ticker }) {
   const { stage, renderer, ticker } = app;
   const mapSize = MAX_POS * 2;
+  const shipVelocity = new Point(0);
+  const numObjects = {
+    bg: 10000,
+    mid: 5000,
+    fg: 1000
+  };
 
   const environmentLayer = stage.addChild(new Container());
   environmentLayer.label = 'environment-layer';
   environmentLayer.enableRenderGroup();
+
   const playerLayer = stage.addChild(new Container());
   playerLayer.label = 'player-layer';
   playerLayer.enableRenderGroup();
 
+  const ship = playerLayer.addChild(new Ship());
+  ship.position.set(renderer.width / 2, renderer.height * 0.75);
+
   const bgLayer = environmentLayer.addChild(new Layer(mapSize, mapSize, 0.1));
   bgLayer.label = 'bg-layer';
+  bgLayer.position = ship.position;
+
   const midLayer = environmentLayer.addChild(new Layer(mapSize, mapSize, 0.3));
   midLayer.label = 'mid-layer';
-  const cameraLayer = environmentLayer.addChild(new Layer(mapSize, mapSize, 1));
-  cameraLayer.label = 'camera-layer';
-
-  const ship = playerLayer.addChild(new Ship());
-  ship.position.set(renderer.canvas.width / 2, renderer.canvas.height * 0.75);
-  bgLayer.position = ship.position;
   midLayer.position = ship.position;
-  cameraLayer.position = ship.position;
 
-  let shipVelocity = new Point(0);
+  const fgLayer = environmentLayer.addChild(new Layer(mapSize, mapSize, 1));
+  fgLayer.label = 'camera-layer';
+  fgLayer.position = ship.position;
 
+  const resetLayers = () => {
+    bgLayer.removeObjects();
+    bgLayer.reset();
+    setBgObjects(numObjects.bg);
+
+    midLayer.removeObjects();
+    midLayer.reset();
+    setMidObjects(numObjects.mid);
+
+    fgLayer.removeObjects();
+    fgLayer.reset();
+    setFgObjects(numObjects.fg);
+  };
+
+  const setBgObjects = function(numObjects: number): void {
+    for (let i = 0; i < numObjects; i++) {
+      const starRadius = randomNumber(2, 1);
+
+      const star = new Star(starRadius);
+
+      bgLayer.addObject(star).position.set(
+        randomNumber(mapSize, -mapSize / 2),
+        randomNumber(mapSize, -mapSize / 2)
+      );
+    }
+  };
+
+  const setMidObjects = function(numObjects: number) {
+    for (let i = 0; i < numObjects; i++) {
+      const nearStarRadius = randomNumber(2, 1);
+
+      const nearStar = new Star(nearStarRadius);
+
+      midLayer.addObject(nearStar).position.set(
+        randomNumber(mapSize, -mapSize / 2),
+        randomNumber(mapSize, -mapSize / 2));
+    }
+  };
+
+  const setFgObjects = function(numObjects: number) {
+    for (let i = 0; i < numObjects; i++) {
+      const planetRadius = randomNumber(50, 10);
+
+      const planet = new Planet(planetRadius);
+
+      fgLayer.addObject(planet).position.set(
+        randomNumber(mapSize, -mapSize / 2),
+        randomNumber(mapSize, -mapSize / 2),
+      )
+    }
+  };
+
+  resetLayers();
+
+  // debug stuff
   const gui = new GUI();
   const universeFolder = gui.addFolder('Universe');
-  universeFolder.add({ numObjects: 1000 }, 'numObjects', 100, 10000).onFinishChange((value) => {
-    setObjects(value);
-  }).name('No. Objects');
+  universeFolder
+    .add(numObjects, 'bg', 1000, 30000)
+    .onFinishChange(() => resetLayers())
+    .name('Bg Objects');
 
+  universeFolder
+    .add(numObjects, 'mid', 500, 15000)
+    .onFinishChange(() => resetLayers())
+    .name('Mid Objects');
+
+  universeFolder
+    .add(numObjects, 'fg', 100, 10000)
+    .onFinishChange(() => resetLayers())
+    .name('Fg Objects');
+
+  // performance
   const stats = new Stats();
   stats.showPanel(0);
   document.body.appendChild(stats.dom);
 
+  // resize
+  window.onresize = () => {
+    renderer.resize(window.innerWidth, window.innerHeight);
+    ship.x = renderer.width / 2;
+    ship.y = renderer.height * 0.75;
+    bgLayer.position = ship.position;
+    midLayer.position = ship.position;
+    fgLayer.position = ship.position;
+  };
+
+  // input
   let isPointerDown = false;
   let isTouch = false;
   let isAcceleratorPressed = false;
@@ -125,43 +211,6 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
   let isBoostPressed = false;
   let eventX = 0;
   let eventY = 0;
-
-  const setObjects = function(numObjects: number) {
-    bgLayer.reset();
-    midLayer.reset();
-    cameraLayer.reset();
-    for (let i = 0; i < numObjects; i++) {
-      const planetRadius = randomNumber(50, 10);
-      const starRadius = randomNumber(2, 1);
-      const nearStarRadius = randomNumber(2, 1);
-
-      const planet = new Planet(planetRadius);
-      const star = new Star(starRadius);
-      const nearStar = new Star(nearStarRadius);
-
-      bgLayer.addObject(star).position.set(
-        randomNumber(mapSize, -mapSize / 2),
-        randomNumber(mapSize, -mapSize / 2)
-      );
-      midLayer.addObject(nearStar).position.set(
-        randomNumber(mapSize, -mapSize / 2),
-        randomNumber(mapSize, -mapSize / 2));
-      cameraLayer.addObject(planet).position.set(
-        randomNumber(mapSize, -mapSize / 2),
-        randomNumber(mapSize, -mapSize / 2),
-      )
-    }
-  }
-
-  setObjects(1000);
-
-  window.onresize = () => {
-    ship.x = window.innerWidth / 2;
-    ship.y = window.innerHeight * 0.75;
-    bgLayer.position = ship.position;
-    midLayer.position = ship.position;
-    cameraLayer.position = ship.position;
-  };
 
   renderer.canvas.ontouchstart = (event) => {
     event.preventDefault();
@@ -230,7 +279,7 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
         isBrakePressed = true;
         break;
     }
-  }
+  };
 
   window.onkeyup = (event) => {
     switch (event.key) {
@@ -257,15 +306,15 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
         isBrakePressed = false;
         break;
     }
-  }
+  };
 
   ticker.maxFPS = 60;
   ticker.add(({ deltaTime }) => {
     stats.begin();
-    const topEdge = cameraLayer.border.y;
-    const bottomEdge = cameraLayer.border.y + cameraLayer.border.height;
-    const leftEdge = cameraLayer.border.x;
-    const rightEdge = cameraLayer.border.x + cameraLayer.border.width;
+    const topEdge = fgLayer.border.y;
+    const bottomEdge = fgLayer.border.y + fgLayer.border.height;
+    const leftEdge = fgLayer.border.x;
+    const rightEdge = fgLayer.border.x + fgLayer.border.width;
 
     if (isPointerDown || isTouch) {
       const newRotation = Math.atan2(eventX - ship.x, -(eventY - ship.y));
@@ -347,11 +396,11 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
 
     bgLayer.velocity.set(shipVelocity.x, shipVelocity.y);
     midLayer.velocity.set(shipVelocity.x, shipVelocity.y);
-    cameraLayer.velocity.set(shipVelocity.x, shipVelocity.y);
+    fgLayer.velocity.set(shipVelocity.x, shipVelocity.y);
 
     bgLayer.update(deltaTime);
     midLayer.update(deltaTime);
-    cameraLayer.update(deltaTime);
+    fgLayer.update(deltaTime);
 
     stats.end();
   });
