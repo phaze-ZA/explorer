@@ -101,15 +101,48 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
   const ship = playerLayer.addChild(new Ship());
   ship.position.set(renderer.width / 2, renderer.height * 0.75);
 
-  const bgLayer = environmentLayer.addChild(new Layer(mapSize, mapSize, 0.1));
+  const renderEdgeX = renderer.width / 2 + 500;
+  const renderEdgeY = renderer.height * 0.75 + 500;
+
+  const bgLayer = environmentLayer
+    .addChild(
+      new Layer(
+        mapSize,
+        mapSize,
+        0.1,
+        {
+          start: new Point(-renderEdgeX * 1 / 0.1, -renderEdgeY * 1 / 0.1),
+          end: new Point(renderEdgeX * 1 / 0.1, renderEdgeY * 1 / 0.1)
+        }
+      ));
   bgLayer.label = 'bg-layer';
   bgLayer.position = ship.position;
 
-  const midLayer = environmentLayer.addChild(new Layer(mapSize, mapSize, 0.3));
+  const midLayer = environmentLayer
+    .addChild(
+      new Layer(
+        mapSize,
+        mapSize,
+        0.3,
+        {
+          start: new Point(-renderEdgeX * 1 / 0.3, -renderEdgeY * 1 / 0.3),
+          end: new Point(renderEdgeX * 1 / 0.3, renderEdgeY * 1 / 0.3)
+        }
+      ));
   midLayer.label = 'mid-layer';
   midLayer.position = ship.position;
 
-  const fgLayer = environmentLayer.addChild(new Layer(mapSize, mapSize, 1));
+  const fgLayer = environmentLayer
+    .addChild(
+      new Layer(
+        mapSize,
+        mapSize,
+        1,
+        {
+          start: new Point(-renderEdgeX, -renderEdgeY),
+          end: new Point(renderEdgeX, renderEdgeY)
+        })
+    );
   fgLayer.label = 'camera-layer';
   fgLayer.position = ship.position;
 

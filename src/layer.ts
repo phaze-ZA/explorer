@@ -5,7 +5,14 @@ export class Layer extends Container {
   objects: Array<Container> = [];
   border: Graphics;
 
-  constructor(width: number, height: number, scale: number) {
+  constructor(
+    width: number,
+    height: number,
+    scale: number,
+    private readonly _renderZone: {
+      start: Point;
+      end: Point
+    }) {
     super({ isRenderGroup: true });
     this.border = this.addChild(new Graphics()
       .rect(0, 0, width, height)
@@ -38,6 +45,18 @@ export class Layer extends Container {
     this.objects.forEach(object => {
       object.x += deltaX;
       object.y += deltaY;
+
+      if (
+        object.x >= this._renderZone.start.x
+        && object.x <= this._renderZone.end.x
+        && object.y >= this._renderZone.start.y
+        && object.y <= this._renderZone.end.y
+      ) {
+        object.renderable = true;
+      }
+      else {
+        object.renderable = false;
+      }
     });
   }
 }
