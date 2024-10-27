@@ -7,7 +7,7 @@ export class UI extends Container {
   private readonly _magnitude: Text;
   private readonly _xTitle: string = 'X Velocity: ';
   private readonly _yTitle: string = 'Y Velocity: ';
-  private readonly _magnitudeTitle: string = 'Magnitude Velocity: ';
+  private readonly _magnitudeTitle: string = 'Magnitude: ';
   constructor() {
     super();
     this.addChild(

@@ -8,7 +8,7 @@ import { Environment } from "./layer";
 import { UI } from "./ui";
 
 const VANISHING_POINT = 200000;
-const MAX_SPEED = 0.2;
+const MAX_SPEED = 0.05;
 
 async function bootstrap() {
   const renderer = await autoDetectRenderer({
@@ -97,8 +97,6 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
       new Environment(
         renderer.width,
         renderer.height,
-        renderer.width * 1.5,
-        renderer.height * 1.5,
         universeConstants.vanishingPoint
       ));
   environmentLayer.label = 'environment-layer';
@@ -113,7 +111,7 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
   const ship = playerLayer.addChild(new Ship());
   ship.position.set(renderer.width / 2, renderer.height * 0.75);
 
-  environmentLayer.position = ship.position;
+  environmentLayer.position.set(renderer.width / 2, renderer.height / 2);
 
   const resetLayers = () => {
     environmentLayer.removeObjects();
@@ -157,6 +155,8 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
     ship.x = renderer.width / 2;
     ship.y = renderer.height * 0.75;
     environmentLayer.position = ship.position;
+    environmentLayer.screenHeight = renderer.height;
+    environmentLayer.screenWidth = renderer.width;
   };
 
   // input
