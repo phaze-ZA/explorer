@@ -7,7 +7,6 @@ import Stats from 'stats.js';
 import { Environment } from "./layer";
 import { UI } from "./ui";
 
-const MAX_POS = 10000;
 const VANISHING_POINT = 200000;
 const MAX_SPEED = 0.2;
 
@@ -90,7 +89,6 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
 
   const universeConstants = {
     vanishingPoint: VANISHING_POINT,
-    mapSize: MAX_POS,
     maxSpeed: MAX_SPEED
   };
 
@@ -142,10 +140,6 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
 
   universeFolder
     .add(universeConstants, 'vanishingPoint', 1000, 100000)
-    .onFinishChange(() => resetLayers());
-
-  universeFolder
-    .add(universeConstants, 'mapSize', 1000, 100000)
     .onFinishChange(() => resetLayers());
 
   universeFolder

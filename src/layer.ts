@@ -13,28 +13,30 @@ export class Environment extends Container {
   private readonly _planetPool = new ObjectPool<Planet>();
   private _starInterval: number = 100;
   private _planetInterval: number = 1000;
+  private _renderHeight: number;
+  private _renderWidth: number;
 
   constructor(
     public screenWidth: number,
     public screenHeight: number,
-    public renderWidth: number,
-    public renderHeight: number,
     public vanishingPoint: number) {
     super({ isRenderGroup: true, sortableChildren: true });
+    this._renderHeight = screenHeight + 2000;
+    this._renderWidth = screenWidth + 2000;
   }
 
   initialiseLayer(): void {
     for (let i = 0; i < randomNumberBetween(100, 500); i++) {
       this.addStar().position.set(
-        randomNumberBetween(-this.renderWidth/ 2, this.renderWidth / 2),
-        randomNumberBetween(-this.renderHeight / 2, this.renderHeight / 2)
+        randomNumberBetween(-this._renderWidth/ 2, this._renderWidth / 2),
+        randomNumberBetween(-this._renderHeight / 2, this._renderHeight / 2)
       );
     }
 
     for (let i = 0; i < randomNumberBetween(0, 3); i++) {
       this.addPlanet().position.set(
-        randomNumberBetween(-this.renderWidth/ 2, this.renderWidth / 2),
-        randomNumberBetween(-this.renderHeight / 2, this.renderHeight / 2)
+        randomNumberBetween(-this._renderWidth/ 2, this._renderWidth / 2),
+        randomNumberBetween(-this._renderHeight / 2, this._renderHeight / 2)
       );
     }
   }
@@ -120,16 +122,16 @@ export class Environment extends Container {
 
     if (spawnSide === 'x') {
       if (deltaY < 0) {
-        yPos = this.renderHeight / 2;
+        yPos = this._renderHeight / 2;
       } else {
-        yPos = -this.renderHeight / 2;
+        yPos = -this._renderHeight / 2;
       }
       xPos = randomNumberBetween(-this.screenWidth / 2, this.screenWidth / 2);
     } else {
       if (deltaX < 0) {
-        xPos = this.renderWidth / 2;
+        xPos = this._renderWidth / 2;
       } else {
-        xPos = -this.renderWidth / 2;
+        xPos = -this._renderWidth / 2;
       }
       yPos = randomNumberBetween(-this.screenHeight / 2, this.screenHeight / 2);
     }
@@ -138,10 +140,10 @@ export class Environment extends Container {
   }
 
   private canRender(object: GameObject): boolean {
-    return (object.x >= -this.renderWidth / 2
-      && object.x <= this.renderWidth / 2
-      && object.y >= -this.renderHeight / 2
-      && object.y <= this.renderHeight / 2);
+    return (object.x >= -this._renderWidth / 2
+      && object.x <= this._renderWidth / 2
+      && object.y >= -this._renderHeight / 2
+      && object.y <= this._renderHeight / 2);
   }
 
   update(deltaTime: number): void {
