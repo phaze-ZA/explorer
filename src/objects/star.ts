@@ -3,9 +3,8 @@ import { randomNumber } from "../utils";
 import { GameObject } from "../types";
 
 export class Star extends GameObject {
-  constructor(
-    public readonly distance: number
-  ) {
+  public distance: number = 0;
+  constructor() {
     super();
     this.cullable = true;
     const starId = randomNumber(3);

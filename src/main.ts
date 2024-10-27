@@ -1,12 +1,11 @@
 import { Assets, autoDetectRenderer, Container, Point, Renderer, Ticker } from "pixi.js";
 import { Ship } from "./objects/ship";
-import { Planet } from "./objects/planet";
-import { Star } from "./objects/star";
 import { GUI } from "dat.gui";
-import { calculateParallax, getXVector, getYVector, randomNumberBetween } from "./utils";
+import { getXVector, getYVector } from "./utils";
 import { ShipStates } from "./types";
 import Stats from 'stats.js';
-import { Layer } from "./layer";
+import { Environment } from "./layer";
+import { UI } from "./ui";
 
 const MAX_POS = 10000;
 const VANISHING_POINT = 200000;
@@ -94,98 +93,36 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
     mapSize: MAX_POS,
     maxSpeed: MAX_SPEED
   };
-  const mapSize = universeConstants.mapSize * 2;
 
-  const environmentLayer = stage.addChild(new Container());
+  const environmentLayer = stage
+    .addChild(
+      new Environment(
+        renderer.width,
+        renderer.height,
+        renderer.width * 1.5,
+        renderer.height * 1.5,
+        universeConstants.vanishingPoint
+      ));
   environmentLayer.label = 'environment-layer';
-  environmentLayer.enableRenderGroup();
 
   const playerLayer = stage.addChild(new Container());
   playerLayer.label = 'player-layer';
   playerLayer.enableRenderGroup();
 
+  const ui = playerLayer.addChild(new UI());
+  ui.position.set(5, renderer.height - ui.height - 5);
+
   const ship = playerLayer.addChild(new Ship());
   ship.position.set(renderer.width / 2, renderer.height * 0.75);
 
-  const renderEdgeX = renderer.width / 2 + 500;
-  const renderEdgeY = renderer.height * 0.75 + 500;
-
-  const bgLayer = environmentLayer
-    .addChild(
-      new Layer(
-        {
-          start: new Point(-renderEdgeX, -renderEdgeY),
-          end: new Point(renderEdgeX, renderEdgeY)
-        },
-        universeConstants.vanishingPoint
-      ));
-  bgLayer.label = 'bg-layer';
-  bgLayer.position = ship.position;
+  environmentLayer.position = ship.position;
 
   const resetLayers = () => {
-    bgLayer.removeObjects();
-    bgLayer.vanishingPoint = universeConstants.vanishingPoint;
-    setStars(numObjects.stars);
-    setPlanets(numObjects.planets);
-  };
-
-  const setStars = function(numObjects: number): void {
-    for (let i = 0; i < numObjects; i++) {
-      const starDistance = randomNumberBetween(universeConstants.vanishingPoint * 0.9, universeConstants.vanishingPoint - 1);
-      const starRadius = calculateParallax(5, starDistance, universeConstants.vanishingPoint);
-
-      const star = new Star(starDistance);
-      star.scale.set(starRadius);
-
-      const minSize = 1.5;
-      if (star.width < minSize) {
-        const ratio = minSize / star.width;
-        star.width *= ratio;
-        star.height *= ratio;
-      }
-      if (star.height < minSize) {
-        const ratio = minSize / star.width;
-        star.width *= ratio;
-        star.height *= ratio;
-      }
-
-      star.zIndex = universeConstants.vanishingPoint - starDistance;
-
-      bgLayer.addObject(star).position.set(
-        randomNumberBetween(-mapSize / 2, mapSize / 2),
-        randomNumberBetween(-mapSize / 2, mapSize / 2),
-      );
-    }
-  };
-
-  const setPlanets = function(numObjects: number) {
-    for (let i = 0; i < numObjects; i++) {
-      const planetDistance = randomNumberBetween(1, universeConstants.vanishingPoint / 2);
-      const planetRadius = calculateParallax(0.5, planetDistance, universeConstants.vanishingPoint);
-
-      const planet = new Planet(planetDistance);
-      planet.scale.set(planetRadius);
-      const minSize = 20;
-
-      if (planet.width < minSize) {
-        const ratio = minSize / planet.width;
-        planet.width *= ratio;
-        planet.height *= ratio;
-      }
-
-      if (planet.height < minSize) {
-        const ratio = minSize / planet.width;
-        planet.width *= ratio;
-        planet.height *= ratio;
-      }
-
-      planet.zIndex = universeConstants.vanishingPoint - planetDistance;
-
-      bgLayer.addObject(planet).position.set(
-        randomNumberBetween(-mapSize * 5, mapSize * 5),
-        randomNumberBetween(-mapSize * 5, mapSize * 5),
-      )
-    }
+    environmentLayer.removeObjects();
+    environmentLayer.vanishingPoint = universeConstants.vanishingPoint;
+    environmentLayer.populateStarPool(numObjects.stars);
+    environmentLayer.populatePlanetPool(numObjects.planets);
+    environmentLayer.initialiseLayer();
   };
 
   resetLayers();
@@ -225,7 +162,7 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
     renderer.resize(window.innerWidth, window.innerHeight);
     ship.x = renderer.width / 2;
     ship.y = renderer.height * 0.75;
-    bgLayer.position = ship.position;
+    environmentLayer.position = ship.position;
   };
 
   // input
@@ -397,8 +334,9 @@ function initialiseGame(app: { stage: Container; renderer: Renderer; ticker: Tic
       }
     }
 
-    bgLayer.velocity.set(shipVelocity.x, shipVelocity.y);
-    bgLayer.update(deltaTime);
+    environmentLayer.velocity.set(shipVelocity.x, shipVelocity.y);
+    environmentLayer.update(deltaTime);
+    ui.setVelocity(shipVelocity.x, shipVelocity.y);
 
     stats.end();
   });

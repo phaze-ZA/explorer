@@ -3,9 +3,8 @@ import { getRandomColor, randomNumber } from "../utils";
 import { GameObject } from "../types";
 
 export class Planet extends GameObject {
-  constructor(
-    public readonly distance: number
-  ) {
+  public distance: number = 0;
+  constructor() {
     super();
     const sphereId = randomNumber(3);
     const lightId = randomNumber(10);

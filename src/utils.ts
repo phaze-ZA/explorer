@@ -6,6 +6,11 @@ export function randomNumberBetween(minInclusive: number, maxExclusive: number):
   return Math.floor(Math.random() * (maxExclusive - minInclusive + 1)) + minInclusive;
 }
 
+export function roundNumber(value: number, numPlaces: number = 0): number {
+  const places = Math.pow(10, numPlaces);
+  return Number(Math.round(value * places) / places);
+}
+
 export function getRandomColor(): string {
   const r = Math.floor(Math.random() * 256);
   const g = Math.floor(Math.random() * 256);
